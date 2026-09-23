@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-clover",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Sales", "Finance & Accounting"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.clover.com/dev/docs/merchant-id-and-api-token-for-development"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.clover.com/dev/reference/api-reference-overview"
+			}
+		]
+	}
+}

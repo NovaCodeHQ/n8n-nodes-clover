@@ -1,0 +1,58 @@
+{
+	"name": "n8n-nodes-clover",
+	"version": "2.0.0",
+	"description": "Clover POS integration for n8n",
+	"license": "MIT",
+	"homepage": "https://github.com/NovaCodeHQ/n8n-nodes-clover",
+	"keywords": [
+		"n8n-community-node-package",
+		"clover",
+		"pos",
+		"point-of-sale",
+		"n8n-nodes-clover"
+	],
+	"author": {
+		"name": "NovaCodeHQ",
+		"email": "support@novacodehq.com"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/NovaCodeHQ/n8n-nodes-clover"
+	},
+	"scripts": {
+		"build": "n8n-node build",
+		"build:watch": "tsc --watch",
+		"dev": "n8n-node dev",
+		"lint": "n8n-node lint",
+		"lint:fix": "n8n-node lint --fix",
+		"release": "n8n-node release",
+		"prepublishOnly": "n8n-node prerelease"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": [
+		"dist"
+	],
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"strict": false,
+		"credentials": [
+			"dist/credentials/CloverApi.credentials.js"
+		],
+		"nodes": [
+			"dist/nodes/Clover/Clover.node.js"
+		]
+	},
+	"devDependencies": {
+		"@n8n/node-cli": "*",
+		"eslint": "9.29.0",
+		"n8n-workflow": "^2.16.0",
+		"prettier": "3.6.2",
+		"release-it": "^19.0.4",
+		"typescript": "5.9.2"
+	},
+	"peerDependencies": {
+		"n8n-workflow": "*"
+	}
+}

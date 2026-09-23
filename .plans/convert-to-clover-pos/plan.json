@@ -1,0 +1,136 @@
+{
+  "planId": "convert-to-clover-pos",
+  "tasks": [
+    {
+      "id": 1,
+      "subject": "Strip ServiceFusion adapter and packaging",
+      "description": "Remove adapter dep, vendor bundle and scripts",
+      "status": "completed",
+      "blockedBy": [],
+      "metadata": {
+        "origin": "plan",
+        "planTaskId": "t-001"
+      },
+      "planId": "convert-to-clover-pos"
+    },
+    {
+      "id": 2,
+      "subject": "Create CloverApi credential with test",
+      "description": "Token, merchantId, environment, override + test",
+      "status": "completed",
+      "blockedBy": [
+        1
+      ],
+      "metadata": {
+        "origin": "plan",
+        "planTaskId": "t-002",
+        "dependsOn": [
+          "t-001"
+        ]
+      },
+      "planId": "convert-to-clover-pos"
+    },
+    {
+      "id": 3,
+      "subject": "Build Clover REST helper (GenericFunctions)",
+      "description": "Base URL, Bearer auth, paging, error mapping",
+      "status": "completed",
+      "blockedBy": [
+        2
+      ],
+      "metadata": {
+        "origin": "plan",
+        "planTaskId": "t-003",
+        "dependsOn": [
+          "t-002"
+        ]
+      },
+      "planId": "convert-to-clover-pos"
+    },
+    {
+      "id": 4,
+      "subject": "Define Clover node description properties",
+      "description": "8 resources, CRUD + pay/refund/void/search",
+      "status": "completed",
+      "blockedBy": [
+        3
+      ],
+      "metadata": {
+        "origin": "plan",
+        "planTaskId": "t-004",
+        "dependsOn": [
+          "t-003"
+        ]
+      },
+      "planId": "convert-to-clover-pos"
+    },
+    {
+      "id": 5,
+      "subject": "Implement merchant/order/payment executors",
+      "description": "Merchant get, Order CRUD + pay, Payment ops",
+      "status": "completed",
+      "blockedBy": [
+        4
+      ],
+      "metadata": {
+        "origin": "plan",
+        "planTaskId": "t-005",
+        "dependsOn": [
+          "t-004"
+        ]
+      },
+      "planId": "convert-to-clover-pos"
+    },
+    {
+      "id": 6,
+      "subject": "Implement customer/inventory/employee executors",
+      "description": "Customer, Item, Category, Modifier, Employee",
+      "status": "completed",
+      "blockedBy": [
+        5
+      ],
+      "metadata": {
+        "origin": "plan",
+        "planTaskId": "t-006",
+        "dependsOn": [
+          "t-005"
+        ]
+      },
+      "planId": "convert-to-clover-pos"
+    },
+    {
+      "id": 7,
+      "subject": "Update metadata, docs, and package manifest",
+      "description": "node.json, icons, manifest, README, CHANGELOG",
+      "status": "completed",
+      "blockedBy": [
+        6
+      ],
+      "metadata": {
+        "origin": "plan",
+        "planTaskId": "t-007",
+        "dependsOn": [
+          "t-006"
+        ]
+      },
+      "planId": "convert-to-clover-pos"
+    },
+    {
+      "id": 8,
+      "subject": "Verify type-check, build, and lint",
+      "description": "Run tsc, build, lint; fix errors",
+      "status": "completed",
+      "blockedBy": [
+        7
+      ],
+      "metadata": {
+        "origin": "plan",
+        "planTaskId": "t-008",
+        "dependsOn": [
+          "t-007"
+        ]
+      },
+      "planId": "convert-to-clover-pos"
+    }
+  ]
+}
