@@ -52,7 +52,6 @@
 # This will lint, build, prompt for a version bump, update the changelog,
 # commit, tag, and push — which triggers this workflow to publish to npm.
 
-
 name: Publish
 
 on:
