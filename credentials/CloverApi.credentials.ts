@@ -40,7 +40,7 @@ export class CloverApi implements ICredentialType {
 			options: [
 				{
 					name: 'Sandbox',
-					value: 'https://api.clover.com',
+					value: 'https://apisandbox.dev.clover.com',
 				},
 				{
 					name: 'Production (North America)',
@@ -55,7 +55,7 @@ export class CloverApi implements ICredentialType {
 					value: 'https://api.la.clover.com',
 				},
 			],
-			default: 'https://apisandbox.dev.clover.com',
+			default: 'https://api.clover.com',
 			description: 'Clover API base URL for your region. Overridden by Base URL Override when set.',
 		},
 		{
