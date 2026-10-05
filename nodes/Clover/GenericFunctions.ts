@@ -45,10 +45,20 @@ export async function cloverApiRequest(
 ): Promise<unknown> {
 	const credentials = await ctx.getCredentials('cloverApi');
 	const url = `${resolveBaseUrl(credentials)}/v3/merchants/${getMerchantId(credentials)}${options.path}`;
+	const qs: IDataObject = {};
+	const repeatedQueryParameters = new URLSearchParams();
+	for (const [key, value] of Object.entries(options.qs ?? {})) {
+		if (Array.isArray(value)) {
+			for (const entry of value) repeatedQueryParameters.append(key, String(entry));
+		} else {
+			qs[key] = value;
+		}
+	}
+	const repeatedQueryString = repeatedQueryParameters.toString();
 	const requestOptions: IHttpRequestOptions = {
 		method: options.method,
-		url,
-		qs: options.qs,
+		url: repeatedQueryString ? `${url}?${repeatedQueryString}` : url,
+		qs,
 		body: options.body,
 		json: true,
 	};

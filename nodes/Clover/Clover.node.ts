@@ -137,6 +137,76 @@ function expandQueryValue(value: unknown): string {
 	return typeof value === 'string' ? value : '';
 }
 
+function filterConditionsProperty(resource: Resource, fields: string[]): INodeProperties {
+	return {
+		displayName: 'Filter Conditions',
+		name: 'filterConditions',
+		type: 'fixedCollection',
+		placeholder: 'Add Condition',
+		default: {},
+		typeOptions: { multipleValues: true },
+		description: 'Add one or more conditions. Clover applies each condition to the results.',
+		displayOptions: { show: { resource: [resource], operation: ['getAll'] } },
+		options: [
+			{
+				displayName: 'Condition',
+				name: 'conditions',
+				default: {},
+				values: [
+					{
+						displayName: 'Field',
+						name: 'field',
+						type: 'options',
+						default: 'id',
+						options: fields.map((field) => ({
+							name: field,
+							value: field,
+						})),
+					},
+					{
+						displayName: 'Operator',
+						name: 'operator',
+						type: 'options',
+						options: [
+							{ name: 'Does Not Equal', value: '!=' },
+							{ name: 'Equals', value: '=' },
+							{ name: 'Greater Than', value: '>' },
+							{ name: 'Greater Than or Equal', value: '>=' },
+						],
+						default: '=',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
+	};
+}
+
+function buildFilterConditions(value: unknown): string[] {
+	if (!value || typeof value !== 'object') return [];
+	const conditions = (value as { conditions?: unknown }).conditions;
+	if (!Array.isArray(conditions)) return [];
+	return conditions.flatMap((condition) => {
+		if (!condition || typeof condition !== 'object') return [];
+		const { field, operator, value: filterValue } = condition as IDataObject;
+		if (
+			typeof field !== 'string' ||
+			typeof operator !== 'string' ||
+			filterValue === undefined ||
+			filterValue === null ||
+			String(filterValue) === ''
+		) {
+			return [];
+		}
+		return [`${field}${operator}${String(filterValue)}`];
+	});
+}
+
 function compactObject(obj: IDataObject): IDataObject {
 	const out: IDataObject = {};
 	for (const [key, value] of Object.entries(obj)) {
@@ -155,8 +225,13 @@ async function executeGetAll(
 	const p = (n: string, f?: unknown) => ctx.getNodeParameter(n, itemIndex, f);
 	const qs: IDataObject = {};
 	if (withFilter) {
-		const filter = p('filter', '') as string;
-		if (filter) qs.filter = filter;
+		const filterConditions = buildFilterConditions(p('filterConditions', {}));
+		if (filterConditions.length > 0) {
+			qs.filter = filterConditions;
+		} else {
+			const rawFilter = p('filter', '') as string;
+			if (rawFilter) qs.filter = rawFilter;
+		}
 	}
 	const expand = expandQueryValue(p('expand', ''));
 	if (expand) qs.expand = expand;
@@ -296,13 +371,15 @@ function allProperties(): INodeProperties[] {
 	const O = 'order';
 	props.push(returnAllProperty(O));
 	props.push(limitProperty(O));
+	props.push(filterConditionsProperty(O, ['id', 'clientCreatedTime', 'total', 'payType']));
 	props.push({
-		displayName: 'Filter',
+		displayName: 'Raw Filter',
 		name: 'filter',
 		type: 'string',
 		default: '',
-		placeholder: 'e.g. state=open',
-		description: 'Clover filter expression for the query',
+		placeholder: 'e.g. total>1000',
+		description:
+			'Advanced Clover filter expression. Filter Conditions take precedence when populated.',
 		displayOptions: { show: { resource: [O], operation: ['getAll'] } },
 	});
 	props.push(
@@ -422,13 +499,15 @@ function allProperties(): INodeProperties[] {
 	const P = 'payment';
 	props.push(returnAllProperty(P));
 	props.push(limitProperty(P));
+	props.push(filterConditionsProperty(P, ['id', 'createdTime', 'modifiedTime']));
 	props.push({
-		displayName: 'Filter',
+		displayName: 'Raw Filter',
 		name: 'filter',
 		type: 'string',
 		default: '',
-		placeholder: 'e.g. createdTime>1700000000000',
-		description: 'Clover filter expression for the query',
+		placeholder: 'e.g. createdTime>=1700000000000',
+		description:
+			'Advanced Clover filter expression. Filter Conditions take precedence when populated.',
 		displayOptions: { show: { resource: [P], operation: ['getAll'] } },
 	});
 	props.push(
@@ -523,12 +602,26 @@ function allProperties(): INodeProperties[] {
 	const C = 'customer';
 	props.push(returnAllProperty(C));
 	props.push(limitProperty(C));
+	props.push(
+		filterConditionsProperty(C, [
+			'customerSince',
+			'firstName',
+			'lastName',
+			'emailAddress',
+			'phoneNumber',
+			'marketingAllowed',
+			'fullName',
+			'id',
+			'deletedTime',
+		]),
+	);
 	props.push({
-		displayName: 'Filter',
+		displayName: 'Raw Filter',
 		name: 'filter',
 		type: 'string',
 		default: '',
-		description: 'Clover filter expression for the query',
+		description:
+			'Advanced Clover filter expression. Filter Conditions take precedence when populated.',
 		displayOptions: { show: { resource: [C], operation: ['getAll'] } },
 	});
 	props.push(
