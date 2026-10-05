@@ -171,13 +171,13 @@ function filterConditionsProperty(resource: Resource, fields: string[]): INodePr
 						noDataExpression: true,
 						options: [
 							{ name: 'Does Not Equal', value: '!=' },
-							{ name: 'Equals', value: '=' },
+							{ name: 'Equals', value: 'equals' },
 							{ name: 'Greater Than', value: '>' },
 							{ name: 'Greater Than or Equal', value: '>=' },
 							{ name: 'Is Empty', value: 'isEmpty' },
 							{ name: 'Is Not Empty', value: 'isNotEmpty' },
 						],
-						default: '=',
+						default: 'equals',
 					},
 					{
 						displayName: 'Value',
@@ -206,11 +206,12 @@ function buildFilterConditions(value: unknown): FilterCondition[] {
 		if (!condition || typeof condition !== 'object') return [];
 		const { field, operator, value: filterValue } = condition as IDataObject;
 		if (typeof field !== 'string' || !field || typeof operator !== 'string' || !operator) return [];
-		if (operator === 'isEmpty' || operator === 'isNotEmpty') {
-			return [{ field, operator }];
+		const apiOperator = operator === 'equals' ? '=' : operator;
+		if (apiOperator === 'isEmpty' || apiOperator === 'isNotEmpty') {
+			return [{ field, operator: apiOperator }];
 		}
 		if (filterValue === undefined || filterValue === null || String(filterValue) === '') return [];
-		return [{ field, operator, value: filterValue }];
+		return [{ field, operator: apiOperator, value: filterValue }];
 	});
 }
 
@@ -417,7 +418,29 @@ function allProperties(): INodeProperties[] {
 	const O = 'order';
 	props.push(returnAllProperty(O));
 	props.push(limitProperty(O));
-	props.push(filterConditionsProperty(O, ['id', 'clientCreatedTime', 'total', 'payType']));
+	props.push(
+		filterConditionsProperty(O, [
+			'employee.id',
+			'note',
+			'modifiedTime',
+			'orderType',
+			'touched',
+			'cardTransaction.last4',
+			'manualTransaction',
+			'employee.name',
+			'title',
+			'device.id',
+			'externalReferenceId',
+			'clientCreatedTime',
+			'total',
+			'payType',
+			'testMode',
+			'createdTime',
+			'id',
+			'state',
+			'deletedTime',
+		]),
+	);
 	props.push({
 		displayName: 'Raw Filter',
 		name: 'filter',
@@ -545,7 +568,25 @@ function allProperties(): INodeProperties[] {
 	const P = 'payment';
 	props.push(returnAllProperty(P));
 	props.push(limitProperty(P));
-	props.push(filterConditionsProperty(P, ['id', 'createdTime', 'modifiedTime']));
+	props.push(
+		filterConditionsProperty(P, [
+			'modifiedTime',
+			'device.id',
+			'externalReferenceId',
+			'result',
+			'offline',
+			'createdTime',
+			'externalPaymentId',
+			'voided',
+			'id',
+			'tender.id',
+			'employee.id',
+			'order.modifiedTime',
+			'amount',
+			'cardType',
+			'clientCreatedTime',
+		]),
+	);
 	props.push({
 		displayName: 'Raw Filter',
 		name: 'filter',
