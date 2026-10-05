@@ -102,6 +102,7 @@ export async function cloverApiRequestAllItems(
 		qs?: IDataObject;
 		pageSize?: number;
 		maxResults?: number;
+		itemFilter?: (item: IDataObject) => boolean;
 	},
 ): Promise<IDataObject[]> {
 	const pageSize =
@@ -119,14 +120,14 @@ export async function cloverApiRequestAllItems(
 			qs: { ...baseQs, limit: pageSize, offset },
 		});
 		const page = toCloverItems(response);
-		items.push(...page);
+		items.push(...(options.itemFilter ? page.filter(options.itemFilter) : page));
 		if (options.maxResults !== undefined && items.length >= options.maxResults) {
 			return items.slice(0, options.maxResults);
 		}
-		if (page.length < pageSize) {
+		if (page.length === 0) {
 			break;
 		}
-		offset += pageSize;
+		offset += page.length;
 	}
 	return items;
 }

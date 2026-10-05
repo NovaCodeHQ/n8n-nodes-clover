@@ -145,7 +145,8 @@ function filterConditionsProperty(resource: Resource, fields: string[]): INodePr
 		placeholder: 'Add Condition',
 		default: {},
 		typeOptions: { multipleValues: true },
-		description: 'Add one or more conditions. Clover applies each condition to the results.',
+		description:
+			'Add one or more conditions. Is Empty and Is Not Empty are evaluated locally and may require fetching additional pages.',
 		displayOptions: { show: { resource: [resource], operation: ['getAll'] } },
 		options: [
 			{
@@ -167,11 +168,14 @@ function filterConditionsProperty(resource: Resource, fields: string[]): INodePr
 						displayName: 'Operator',
 						name: 'operator',
 						type: 'options',
+						noDataExpression: true,
 						options: [
 							{ name: 'Does Not Equal', value: '!=' },
 							{ name: 'Equals', value: '=' },
 							{ name: 'Greater Than', value: '>' },
 							{ name: 'Greater Than or Equal', value: '>=' },
+							{ name: 'Is Empty', value: 'isEmpty' },
+							{ name: 'Is Not Empty', value: 'isNotEmpty' },
 						],
 						default: '=',
 					},
@@ -180,6 +184,7 @@ function filterConditionsProperty(resource: Resource, fields: string[]): INodePr
 						name: 'value',
 						type: 'string',
 						default: '',
+						displayOptions: { hide: { operator: ['isEmpty', 'isNotEmpty'] } },
 					},
 				],
 			},
@@ -187,23 +192,42 @@ function filterConditionsProperty(resource: Resource, fields: string[]): INodePr
 	};
 }
 
-function buildFilterConditions(value: unknown): string[] {
+interface FilterCondition {
+	field: string;
+	operator: string;
+	value?: unknown;
+}
+
+function buildFilterConditions(value: unknown): FilterCondition[] {
 	if (!value || typeof value !== 'object') return [];
 	const conditions = (value as { conditions?: unknown }).conditions;
 	if (!Array.isArray(conditions)) return [];
-	return conditions.flatMap((condition) => {
+	return conditions.flatMap((condition): FilterCondition[] => {
 		if (!condition || typeof condition !== 'object') return [];
 		const { field, operator, value: filterValue } = condition as IDataObject;
-		if (
-			typeof field !== 'string' ||
-			typeof operator !== 'string' ||
-			filterValue === undefined ||
-			filterValue === null ||
-			String(filterValue) === ''
-		) {
-			return [];
+		if (typeof field !== 'string' || !field || typeof operator !== 'string' || !operator) return [];
+		if (operator === 'isEmpty' || operator === 'isNotEmpty') {
+			return [{ field, operator }];
 		}
-		return [`${field}${operator}${String(filterValue)}`];
+		if (filterValue === undefined || filterValue === null || String(filterValue) === '') return [];
+		return [{ field, operator, value: filterValue }];
+	});
+}
+
+type FilterFieldValue = string | number | boolean | IDataObject | IDataObject[] | null | undefined;
+
+function getFieldValue(item: IDataObject, field: string): FilterFieldValue {
+	return field.split('.').reduce<FilterFieldValue>((value, part) => {
+		if (value === null || value === undefined || typeof value !== 'object') return undefined;
+		return (value as Record<string, FilterFieldValue>)[part];
+	}, item);
+}
+
+function matchesLocalFilterConditions(item: IDataObject, conditions: FilterCondition[]): boolean {
+	return conditions.every(({ field, operator }) => {
+		const value = getFieldValue(item, field);
+		const isEmpty = value === undefined || value === null || value === '';
+		return operator === 'isEmpty' ? isEmpty : !isEmpty;
 	});
 }
 
@@ -224,10 +248,21 @@ async function executeGetAll(
 ): Promise<INodeExecutionData[]> {
 	const p = (n: string, f?: unknown) => ctx.getNodeParameter(n, itemIndex, f);
 	const qs: IDataObject = {};
+	let localFilterConditions: FilterCondition[] = [];
 	if (withFilter) {
 		const filterConditions = buildFilterConditions(p('filterConditions', {}));
 		if (filterConditions.length > 0) {
-			qs.filter = filterConditions;
+			const apiFilterConditions = filterConditions.filter(
+				({ operator }) => operator !== 'isEmpty' && operator !== 'isNotEmpty',
+			);
+			localFilterConditions = filterConditions.filter(
+				({ operator }) => operator === 'isEmpty' || operator === 'isNotEmpty',
+			);
+			if (apiFilterConditions.length > 0) {
+				qs.filter = apiFilterConditions.map(
+					({ field, operator, value }) => `${field}${operator}${String(value)}`,
+				);
+			}
 		} else {
 			const rawFilter = p('filter', '') as string;
 			if (rawFilter) qs.filter = rawFilter;
@@ -235,11 +270,22 @@ async function executeGetAll(
 	}
 	const expand = expandQueryValue(p('expand', ''));
 	if (expand) qs.expand = expand;
-	if (p('returnAll', false)) {
-		const items = await cloverApiRequestAllItems(ctx, { path, qs });
+	const returnAll = p('returnAll', false) as boolean;
+	const limit = p('limit', 50) as number;
+	if (returnAll || localFilterConditions.length > 0) {
+		const items = await cloverApiRequestAllItems(ctx, {
+			path,
+			qs,
+			...(returnAll ? {} : { maxResults: limit }),
+			...(localFilterConditions.length > 0
+				? {
+						itemFilter: (item: IDataObject) =>
+							matchesLocalFilterConditions(item, localFilterConditions),
+					}
+				: {}),
+		});
 		return items.map((item) => ({ json: item }));
 	}
-	const limit = p('limit', 50) as number;
 	const response = await cloverApiRequest(ctx, { method: 'GET', path, qs: { ...qs, limit } });
 	return toCloverItems(response).map((item) => ({ json: item }));
 }
