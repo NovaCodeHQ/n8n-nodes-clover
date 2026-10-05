@@ -50,6 +50,7 @@ export async function cloverApiRequest(
 		url,
 		qs: options.qs,
 		body: options.body,
+		json: true,
 	};
 
 	try {
