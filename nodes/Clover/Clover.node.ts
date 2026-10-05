@@ -176,6 +176,8 @@ function filterConditionsProperty(resource: Resource, fields: string[]): INodePr
 							{ name: 'Greater Than or Equal', value: '>=' },
 							{ name: 'Is Empty', value: 'isEmpty' },
 							{ name: 'Is Not Empty', value: 'isNotEmpty' },
+							{ name: 'Less Than', value: '<' },
+							{ name: 'Less Than or Equal', value: '<=' },
 						],
 						default: 'equals',
 					},
