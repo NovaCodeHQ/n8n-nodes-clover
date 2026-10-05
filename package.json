@@ -1,6 +1,6 @@
 {
 	"name": "n8n-nodes-clover",
-	"version": "2.2.1",
+	"version": "2.2.2",
 	"description": "Clover POS integration for n8n",
 	"license": "MIT",
 	"homepage": "https://github.com/NovaCodeHQ/n8n-nodes-clover",
