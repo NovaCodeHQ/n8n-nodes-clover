@@ -113,17 +113,28 @@ function limitProperty(resource: Resource): INodeProperties {
 function expandProperty(
 	resource: Resource,
 	operations: string[],
-	description = 'Comma-separated related objects to expand in the response',
+	fields: string[],
 ): INodeProperties {
 	return {
 		displayName: 'Expand',
 		name: 'expand',
-		type: 'string',
-		default: '',
-		placeholder: 'e.g. lineItems,payments',
-		description,
+		type: 'multiOptions',
+		options: fields.map((field) => ({
+			name: field.replace(/([A-Z])/g, ' $1').replace(/^./, (letter) => letter.toUpperCase()),
+			value: field,
+		})),
+		default: [],
+		description:
+			'Related objects to include in the response. Clover supports a maximum of three expansions per request.',
 		displayOptions: { show: { resource: [resource], operation: operations } },
 	};
+}
+
+function expandQueryValue(value: unknown): string {
+	if (Array.isArray(value)) {
+		return value.filter((entry): entry is string => typeof entry === 'string').join(',');
+	}
+	return typeof value === 'string' ? value : '';
 }
 
 function compactObject(obj: IDataObject): IDataObject {
@@ -147,7 +158,7 @@ async function executeGetAll(
 		const filter = p('filter', '') as string;
 		if (filter) qs.filter = filter;
 	}
-	const expand = p('expand', '') as string;
+	const expand = expandQueryValue(p('expand', ''));
 	if (expand) qs.expand = expand;
 	if (p('returnAll', false)) {
 		const items = await cloverApiRequestAllItems(ctx, { path, qs });
@@ -244,7 +255,42 @@ function allProperties(): INodeProperties[] {
 	});
 
 	// ---------- Merchant ----------
-	props.push(expandProperty('merchant', ['get']));
+	props.push(
+		expandProperty(
+			'merchant',
+			['get'],
+			[
+				'employees',
+				'bankProcessing',
+				'externalMerchant',
+				'merchantBoarding',
+				'merchantL3Prerequisite',
+				'deviceBoarding',
+				'programExpress',
+				'hierarchy',
+				'shifts',
+				'orders',
+				'address',
+				'logos',
+				'owner',
+				'items',
+				'tags',
+				'tenders',
+				'payments',
+				'gateway',
+				'printers',
+				'modifierGroups',
+				'properties',
+				'tipSuggestions',
+				'openingHours',
+				'partnerApp',
+				'selfBoardingApplication',
+				'enterprises',
+				'equipment',
+				'equipmentSummary',
+			],
+		),
+	);
 
 	// ---------- Order ----------
 	const O = 'order';
@@ -259,7 +305,44 @@ function allProperties(): INodeProperties[] {
 		description: 'Clover filter expression for the query',
 		displayOptions: { show: { resource: [O], operation: ['getAll'] } },
 	});
-	props.push(expandProperty(O, ['getAll', 'get']));
+	props.push(
+		expandProperty(
+			O,
+			['getAll'],
+			[
+				'employee',
+				'payments',
+				'refunds',
+				'credits',
+				'voids',
+				'payment.tender',
+				'payment.cardTransaction',
+				'lineItems',
+				'customers',
+				'serviceCharge',
+				'discounts',
+				'orderType',
+				'lineItems.discounts',
+				'lineItems.modifications',
+			],
+		),
+	);
+	props.push(
+		expandProperty(
+			O,
+			['get'],
+			[
+				'lineItems',
+				'serviceCharge',
+				'discounts',
+				'credits',
+				'payments',
+				'customers',
+				'orderFulfillmentEvent',
+				'refunds',
+			],
+		),
+	);
 	props.push({
 		displayName: 'Order ID',
 		name: 'orderId',
@@ -348,7 +431,51 @@ function allProperties(): INodeProperties[] {
 		description: 'Clover filter expression for the query',
 		displayOptions: { show: { resource: [P], operation: ['getAll'] } },
 	});
-	props.push(expandProperty(P, ['getAll', 'get']));
+	props.push(
+		expandProperty(
+			P,
+			['getAll'],
+			[
+				'tender',
+				'germanInfo',
+				'lineItemPayments',
+				'cardTransaction',
+				'dccInfo',
+				'refunds',
+				'transactionInfo',
+				'externalReferenceId',
+				'oceanGatewayInfo',
+				'taxRates',
+				'additionalCharges',
+				'appTracking',
+				'paymentAttributes',
+				'order',
+			],
+		),
+	);
+	props.push(
+		expandProperty(
+			P,
+			['get'],
+			[
+				'tender',
+				'germanInfo',
+				'lineItemPayments',
+				'cardTransaction',
+				'dccInfo',
+				'employee',
+				'refunds',
+				'transactionInfo',
+				'externalReferenceId',
+				'oceanGatewayInfo',
+				'taxRates',
+				'additionalCharges',
+				'appTracking',
+				'paymentAttributes',
+				'order',
+			],
+		),
+	);
 	props.push({
 		displayName: 'Payment ID',
 		name: 'paymentId',
@@ -404,7 +531,13 @@ function allProperties(): INodeProperties[] {
 		description: 'Clover filter expression for the query',
 		displayOptions: { show: { resource: [C], operation: ['getAll'] } },
 	});
-	props.push(expandProperty(C, ['getAll', 'get']));
+	props.push(
+		expandProperty(
+			C,
+			['getAll', 'get'],
+			['addresses', 'emailAddresses', 'phoneNumbers', 'cards', 'metadata'],
+		),
+	);
 	props.push({
 		displayName: 'Customer ID',
 		name: 'customerId',
@@ -476,7 +609,20 @@ function allProperties(): INodeProperties[] {
 	const I = 'item';
 	props.push(returnAllProperty(I));
 	props.push(limitProperty(I));
-	props.push(expandProperty(I, ['getAll', 'get']));
+	props.push(
+		expandProperty(
+			I,
+			['getAll'],
+			['tags', 'categories', 'taxRates', 'modifierGroups', 'itemStock', 'options', 'ageRestricted'],
+		),
+	);
+	props.push(
+		expandProperty(
+			I,
+			['get'],
+			['tags', 'categories', 'taxRates', 'modifierGroups', 'itemStock', 'options'],
+		),
+	);
 	props.push({
 		displayName: 'Item ID',
 		name: 'itemId',
@@ -537,7 +683,7 @@ function allProperties(): INodeProperties[] {
 	const G = 'category';
 	props.push(returnAllProperty(G));
 	props.push(limitProperty(G));
-	props.push(expandProperty(G, ['getAll', 'get']));
+	props.push(expandProperty(G, ['getAll', 'get'], ['items']));
 	props.push({
 		displayName: 'Category ID',
 		name: 'categoryId',
@@ -578,7 +724,7 @@ function allProperties(): INodeProperties[] {
 	const MG = 'modifierGroup';
 	props.push(returnAllProperty(MG));
 	props.push(limitProperty(MG));
-	props.push(expandProperty(MG, ['getAll', 'get']));
+	props.push(expandProperty(MG, ['getAll', 'get'], ['modifiers', 'items']));
 	props.push({
 		displayName: 'Modifier Group ID',
 		name: 'modifierGroupId',
@@ -620,7 +766,7 @@ function allProperties(): INodeProperties[] {
 	const E = 'employee';
 	props.push(returnAllProperty(E));
 	props.push(limitProperty(E));
-	props.push(expandProperty(E, ['getAll', 'get']));
+	props.push(expandProperty(E, ['getAll', 'get'], ['roles', 'shifts']));
 	props.push({
 		displayName: 'Employee ID',
 		name: 'employeeId',
@@ -641,7 +787,7 @@ async function executeMerchant(
 	if (operation !== 'get') {
 		throw new NodeOperationError(ctx.getNode(), `Unknown operation: ${operation}`);
 	}
-	const expand = ctx.getNodeParameter('expand', itemIndex, '') as string;
+	const expand = expandQueryValue(ctx.getNodeParameter('expand', itemIndex, ''));
 	const qs: IDataObject = {};
 	if (expand) qs.expand = expand;
 	const response = await cloverApiRequest(ctx, { method: 'GET', path: '', qs });
@@ -658,7 +804,7 @@ async function executeOrder(
 		case 'getAll':
 			return executeGetAll(ctx, '/orders', itemIndex, true);
 		case 'get': {
-			const expand = p('expand', '') as string;
+			const expand = expandQueryValue(p('expand', ''));
 			const qs: IDataObject = {};
 			if (expand) qs.expand = expand;
 			const response = await cloverApiRequest(ctx, {
@@ -722,7 +868,7 @@ async function executePayment(
 		case 'getAll':
 			return executeGetAll(ctx, '/payments', itemIndex, true);
 		case 'get': {
-			const expand = p('expand', '') as string;
+			const expand = expandQueryValue(p('expand', ''));
 			const qs: IDataObject = {};
 			if (expand) qs.expand = expand;
 			const response = await cloverApiRequest(ctx, {
@@ -798,7 +944,7 @@ async function executeCustomer(
 		case 'getAll':
 			return executeGetAll(ctx, '/customers', itemIndex, true);
 		case 'get': {
-			const expand = p('expand', '') as string;
+			const expand = expandQueryValue(p('expand', ''));
 			const qs: IDataObject = {};
 			if (expand) qs.expand = expand;
 			const response = await cloverApiRequest(ctx, {
@@ -876,7 +1022,7 @@ async function executeItem(
 		case 'getAll':
 			return executeGetAll(ctx, '/items', itemIndex, false);
 		case 'get': {
-			const expand = p('expand', '') as string;
+			const expand = expandQueryValue(p('expand', ''));
 			const qs: IDataObject = {};
 			if (expand) qs.expand = expand;
 			const response = await cloverApiRequest(ctx, {
@@ -933,7 +1079,7 @@ async function executeCategory(
 		case 'getAll':
 			return executeGetAll(ctx, '/categories', itemIndex, false);
 		case 'get': {
-			const expand = p('expand', '') as string;
+			const expand = expandQueryValue(p('expand', ''));
 			const qs: IDataObject = {};
 			if (expand) qs.expand = expand;
 			const response = await cloverApiRequest(ctx, {
@@ -987,7 +1133,7 @@ async function executeModifierGroup(
 		case 'getAll':
 			return executeGetAll(ctx, '/modifier_groups', itemIndex, false);
 		case 'get': {
-			const expand = p('expand', '') as string;
+			const expand = expandQueryValue(p('expand', ''));
 			const qs: IDataObject = {};
 			if (expand) qs.expand = expand;
 			const response = await cloverApiRequest(ctx, {
@@ -1041,7 +1187,7 @@ async function executeEmployee(
 		case 'getAll':
 			return executeGetAll(ctx, '/employees', itemIndex, false);
 		case 'get': {
-			const expand = p('expand', '') as string;
+			const expand = expandQueryValue(p('expand', ''));
 			const qs: IDataObject = {};
 			if (expand) qs.expand = expand;
 			const response = await cloverApiRequest(ctx, {
