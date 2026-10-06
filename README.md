@@ -11,7 +11,7 @@ Self-hosted n8n community node for [Clover](https://www.clover.com) point of sal
 @novacodehq/n8n-nodes-clover
 ```
 
-Published to npm under the `@novacodehq` scope. Built as an n8n community node package for **self-hosted n8n** instances only.
+Built as an n8n community node package for **self-hosted n8n** instances only.
 
 ## Self-hosted only
 

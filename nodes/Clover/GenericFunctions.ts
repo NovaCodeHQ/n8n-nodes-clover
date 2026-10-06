@@ -101,8 +101,6 @@ export async function cloverApiRequestAllItems(
 		path: string;
 		qs?: IDataObject;
 		pageSize?: number;
-		maxResults?: number;
-		itemFilter?: (item: IDataObject) => boolean;
 	},
 ): Promise<IDataObject[]> {
 	const pageSize =
@@ -120,10 +118,7 @@ export async function cloverApiRequestAllItems(
 			qs: { ...baseQs, limit: pageSize, offset },
 		});
 		const page = toCloverItems(response);
-		items.push(...(options.itemFilter ? page.filter(options.itemFilter) : page));
-		if (options.maxResults !== undefined && items.length >= options.maxResults) {
-			return items.slice(0, options.maxResults);
-		}
+		items.push(...page);
 		if (page.length === 0) {
 			break;
 		}

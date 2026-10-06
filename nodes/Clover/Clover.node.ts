@@ -146,7 +146,7 @@ function filterConditionsProperty(resource: Resource, fields: string[]): INodePr
 		default: {},
 		typeOptions: { multipleValues: true },
 		description:
-			'Add one or more conditions. Is Empty and Is Not Empty are evaluated locally and may require fetching additional pages.',
+			'Add one or more conditions. Empty checks are sent to Clover as field= (Is Empty) or field!= (Is Not Empty).',
 		displayOptions: { show: { resource: [resource], operation: ['getAll'] } },
 		options: [
 			{
@@ -217,23 +217,6 @@ function buildFilterConditions(value: unknown): FilterCondition[] {
 	});
 }
 
-type FilterFieldValue = string | number | boolean | IDataObject | IDataObject[] | null | undefined;
-
-function getFieldValue(item: IDataObject, field: string): FilterFieldValue {
-	return field.split('.').reduce<FilterFieldValue>((value, part) => {
-		if (value === null || value === undefined || typeof value !== 'object') return undefined;
-		return (value as Record<string, FilterFieldValue>)[part];
-	}, item);
-}
-
-function matchesLocalFilterConditions(item: IDataObject, conditions: FilterCondition[]): boolean {
-	return conditions.every(({ field, operator }) => {
-		const value = getFieldValue(item, field);
-		const isEmpty = value === undefined || value === null || value === '';
-		return operator === 'isEmpty' ? isEmpty : !isEmpty;
-	});
-}
-
 function compactObject(obj: IDataObject): IDataObject {
 	const out: IDataObject = {};
 	for (const [key, value] of Object.entries(obj)) {
@@ -251,21 +234,26 @@ async function executeGetAll(
 ): Promise<INodeExecutionData[]> {
 	const p = (n: string, f?: unknown) => ctx.getNodeParameter(n, itemIndex, f);
 	const qs: IDataObject = {};
-	let localFilterConditions: FilterCondition[] = [];
 	if (withFilter) {
-		const filterConditions = buildFilterConditions(p('filterConditions', {}));
+		const filterConditionsValue = p('filterConditions', {});
+		const conditionRows =
+			filterConditionsValue && typeof filterConditionsValue === 'object'
+				? (filterConditionsValue as { conditions?: unknown }).conditions
+				: undefined;
+		const filterConditions = buildFilterConditions(filterConditionsValue);
+		if (Array.isArray(conditionRows) && conditionRows.length > filterConditions.length) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				'Complete or remove every filter condition before executing.',
+				{ itemIndex },
+			);
+		}
 		if (filterConditions.length > 0) {
-			const apiFilterConditions = filterConditions.filter(
-				({ operator }) => operator !== 'isEmpty' && operator !== 'isNotEmpty',
-			);
-			localFilterConditions = filterConditions.filter(
-				({ operator }) => operator === 'isEmpty' || operator === 'isNotEmpty',
-			);
-			if (apiFilterConditions.length > 0) {
-				qs.filter = apiFilterConditions.map(
-					({ field, operator, value }) => `${field}${operator}${String(value)}`,
-				);
-			}
+			qs.filter = filterConditions.map(({ field, operator, value }) => {
+				if (operator === 'isEmpty') return `${field}=`;
+				if (operator === 'isNotEmpty') return `${field}!=`;
+				return `${field}${operator}${String(value)}`;
+			});
 		} else {
 			const rawFilter = p('filter', '') as string;
 			if (rawFilter) qs.filter = rawFilter;
@@ -275,18 +263,8 @@ async function executeGetAll(
 	if (expand) qs.expand = expand;
 	const returnAll = p('returnAll', false) as boolean;
 	const limit = p('limit', 50) as number;
-	if (returnAll || localFilterConditions.length > 0) {
-		const items = await cloverApiRequestAllItems(ctx, {
-			path,
-			qs,
-			...(returnAll ? {} : { maxResults: limit }),
-			...(localFilterConditions.length > 0
-				? {
-						itemFilter: (item: IDataObject) =>
-							matchesLocalFilterConditions(item, localFilterConditions),
-					}
-				: {}),
-		});
+	if (returnAll) {
+		const items = await cloverApiRequestAllItems(ctx, { path, qs });
 		return items.map((item) => ({ json: item }));
 	}
 	const response = await cloverApiRequest(ctx, { method: 'GET', path, qs: { ...qs, limit } });
@@ -1084,15 +1062,6 @@ async function executePayment(
 	}
 }
 
-function nestedValues(item: IDataObject, collection: string, field: string): string[] {
-	const coll = item[collection] as { elements?: unknown } | unknown[] | undefined;
-	const arr = Array.isArray(coll) ? coll : coll?.elements;
-	if (!Array.isArray(arr)) return [];
-	return arr
-		.map((entry) => (entry as IDataObject)?.[field])
-		.filter((value): value is string => typeof value === 'string');
-}
-
 function buildCustomerBody(ctx: IExecuteFunctions, itemIndex: number): IDataObject {
 	const p = (n: string, f?: unknown) => ctx.getNodeParameter(n, itemIndex, f);
 	const body: IDataObject = {};
@@ -1172,22 +1141,12 @@ async function executeCustomer(
 			const filters: string[] = [];
 			if (firstName) filters.push(`firstName=${firstName}`);
 			if (lastName) filters.push(`lastName=${lastName}`);
+			if (email) filters.push(`emailAddress=${email}`);
+			if (phone) filters.push(`phoneNumber=${phone}`);
 			const qs: IDataObject = { expand: 'emailAddresses,phoneNumbers' };
-			if (filters.length > 0) qs.filter = filters.join(' AND ');
+			if (filters.length > 0) qs.filter = filters;
 			const items = await cloverApiRequestAllItems(ctx, { path: '/customers', qs });
-			const normalizedPhone = phone.replace(/\D/g, '');
-			const matched = items.filter((item) => {
-				if (email) {
-					const emails = nestedValues(item, 'emailAddresses', 'emailAddress');
-					if (!emails.some((e) => e.toLowerCase() === email.toLowerCase())) return false;
-				}
-				if (normalizedPhone) {
-					const phones = nestedValues(item, 'phoneNumbers', 'phoneNumber');
-					if (!phones.some((ph) => ph.replace(/\D/g, '') === normalizedPhone)) return false;
-				}
-				return true;
-			});
-			return matched.map((item) => ({ json: item }));
+			return items.map((item) => ({ json: item }));
 		}
 		default:
 			throw new NodeOperationError(ctx.getNode(), `Unknown operation: ${operation}`);
