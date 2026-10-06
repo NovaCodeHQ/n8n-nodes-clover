@@ -23,6 +23,14 @@ const RESOURCES = [
 ] as const;
 type Resource = (typeof RESOURCES)[number];
 
+const TIMESTAMP_FILTER_FIELDS = new Set([
+	'clientCreatedTime',
+	'createdTime',
+	'deletedTime',
+	'modifiedTime',
+	'order.modifiedTime',
+]);
+
 const RESOURCE_LABELS: Record<Resource, string> = {
 	merchant: 'Merchant',
 	order: 'Order',
@@ -146,7 +154,7 @@ function filterConditionsProperty(resource: Resource, fields: string[]): INodePr
 		default: {},
 		typeOptions: { multipleValues: true },
 		description:
-			'Add one or more conditions. Empty checks are sent to Clover as field= (Is Empty) or field!= (Is Not Empty).',
+			'Add one or more conditions. Empty checks on timestamp fields use 0; other fields use an empty value.',
 		displayOptions: { show: { resource: [resource], operation: ['getAll'] } },
 		options: [
 			{
@@ -250,8 +258,9 @@ async function executeGetAll(
 		}
 		if (filterConditions.length > 0) {
 			qs.filter = filterConditions.map(({ field, operator, value }) => {
-				if (operator === 'isEmpty') return `${field}=`;
-				if (operator === 'isNotEmpty') return `${field}!=`;
+				const emptyValue = TIMESTAMP_FILTER_FIELDS.has(field) ? '0' : '';
+				if (operator === 'isEmpty') return `${field}=${emptyValue}`;
+				if (operator === 'isNotEmpty') return `${field}!=${emptyValue}`;
 				return `${field}${operator}${String(value)}`;
 			});
 		} else {
